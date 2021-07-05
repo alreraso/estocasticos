@@ -23,7 +23,7 @@ d.    Evalúe con la herramienta OpenAI Gym cómo optimizar el desempeño del si
     * De no contar con ns3 y opengym puede encontrar en la carpeta de ns3 opengym la documentacion de instalacion.
 
 * Tener instalado el módulo de LoRaWan
-    * De no tenerlo puede seguir el isntructivo de la pagina del modulo https://apps.nsnam.org/app/lorawan/ buscando el link de code repository, este lo redireccionada a link https://github.com/signetlabdei/lorawan ahi podra entonctrar las intrucciones de instalacion.
+    * De no tenerlo puede seguir el instructivo de la pagina del modulo https://apps.nsnam.org/app/lorawan/ buscando el link de code repository, este lo redireccionada a link https://github.com/signetlabdei/lorawan ahi podra encontrar las intrucciones de instalacion.
 
 **En caso de no saber como instalar NS3 OpenAi Gym o LoRaWan se recomienda pedir en un pull request las instrucciones
 
