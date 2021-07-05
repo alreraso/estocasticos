@@ -1,18 +1,31 @@
+#include "ns3/end-device-lora-phy.h"
+#include "ns3/gateway-lora-phy.h"
+#include "ns3/end-device-lorawan-mac.h"
+#include "ns3/gateway-lorawan-mac.h"
+#include "ns3/simulator.h"
+#include "ns3/log.h"
+#include "ns3/constant-position-mobility-model.h"
+#include "ns3/lora-helper.h"
+#include "ns3/mobility-helper.h"
+#include "ns3/node-container.h"
+#include "ns3/position-allocator.h"
+#include "ns3/one-shot-sender-helper.h"
+#include "ns3/command-line.h"
+#include <algorithm>
+#include <ctime>
+
+
+
 #include "ns3/core-module.h"
 #include "ns3/opengym-module.h"
-#include "ns3/applications-module.h"
-#include "ns3/mobility-module.h"
-#include "ns3/wifi-module.h"
-#include "ns3/csma-module.h"
-#include "ns3/olsr-helper.h"
-#include "ns3/internet-module.h"
-#include "ns3/netanim-module.h"
-using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE ("OpenGym ME G3");
+using namespace ns3;
+using namespace lorawan; 
+
+NS_LOG_COMPONENT_DEFINE ("OpenGym");
 
 /*
-Definimos espacio de observacion
+Define observation space
 */
 Ptr<OpenGymSpace> MyGetObservationSpace(void)
 {
@@ -27,11 +40,11 @@ Ptr<OpenGymSpace> MyGetObservationSpace(void)
 }
 
 /*
-Definimos espacio de acción
+Define action space
 */
 Ptr<OpenGymSpace> MyGetActionSpace(void)
 {
-  uint32_t nodeNum = 2;
+  uint32_t nodeNum = 20;
 
   Ptr<OpenGymDiscreteSpace> space = CreateObject<OpenGymDiscreteSpace> (nodeNum);
   NS_LOG_UNCOND ("MyGetActionSpace: " << space);
@@ -39,7 +52,7 @@ Ptr<OpenGymSpace> MyGetActionSpace(void)
 }
 
 /*
-Definimos terminacion de juego
+Define game over condition
 */
 bool MyGetGameOver(void)
 {
@@ -56,68 +69,34 @@ bool MyGetGameOver(void)
 }
 
 /*
-Recojemos Observaciones
+Collect observations
 */
 Ptr<OpenGymDataContainer> MyGetObservation(void)
 {
-  //
-  // Primero, inicializamos algunas variables locales que controlan algunos
-  // parametros de la simulacion.
-  //
-  uint32_t backboneNodes = 2;
-  
-  Config::SetDefault ("ns3::OnOffApplication::PacketSize", StringValue ("1472"));
-  Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("100kb/s"));
-  ///////////////////////////////////////////////////////////////////////////
-  //                                                                       //
-  // EL backbone                                                           //
-  //                                                                       //
-  ///////////////////////////////////////////////////////////////////////////
+  Ptr<LogDistancePropagationLossModel> loss = CreateObject<LogDistancePropagationLossModel> ();
+  loss->SetPathLossExponent (3.85);
+  loss->SetReference (1, 7.4);
 
-  //
-  // Creamos un contenedor para administrar los nodos de la red adhoc (backbone).
-  //
-  NodeContainer backbone;
-  backbone.Create (backboneNodes);
-  //
-  // Se define la red wifi al giual qeu en el ejemplo #1
-  //si cuenta con un ns3 version .19
-  // debe descomentar la linea 93 y comentar las lineas 91 y 92
-  WifiHelper wifi;
-  WifiMacHelper mac;
-  mac.SetType ("ns3::AdhocWifiMac");
-  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
-                                "DataMode", StringValue ("OfdmRate54Mbps"));
-  YansWifiPhyHelper wifiPhy;
-  wifiPhy.SetErrorRateModel ("ns3::NistErrorRateModel");
-  //YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
-  YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
-  wifiPhy.SetChannel (wifiChannel.Create ());
-  NetDeviceContainer backboneDevices = wifi.Install (wifiPhy, mac, backbone);
-  //
-  // Agregamos la pila de protocolos IPv4 a los nodos en nuestro contenedor
-  //
+  Ptr<PropagationDelayModel> delay = CreateObject<ConstantSpeedPropagationDelayModel> ();
 
-  //OlsrHelper olsr;
-  InternetStackHelper internet;
+  Ptr<LoraChannel> channel = CreateObject<LoraChannel> (loss, delay);
 
-  //internet.SetRoutingHelper (olsr); 
+  /************************
+  *  Create the helpers  *
+  ************************/
 
-  internet.Install(backbone);
-  //
-  // Asignamos direcciones IPv4 a los controladores de dispositivo (en realidad a las interfaces 
-  // IPv4 asociadas) que acabamos de crear.
-  //
-  Ipv4AddressHelper ipAddrs;
-  ipAddrs.SetBase ("192.168.0.0", "255.255.255.0");
-  //ipAddrs.Assign(backboneDevices);
+  //para est ejemplo se asignan en el chanel posiciones cosntantes dado un vector de 0 a 500
 
-  //
-  // Los nodos de red ad-hoc necesitan un modelo de movilidad, por lo que agregamos uno para
-  // cada uno de los nodos que acabamos de terminar de construir.
-  //
+  NS_LOG_INFO ("Setting up helpers...");
 
   MobilityHelper mobility;
+  Ptr<ListPositionAllocator> allocator = CreateObject<ListPositionAllocator> ();
+  allocator->Add (Vector (500,0,0));
+  allocator->Add (Vector (0,0,0));
+  mobility.SetPositionAllocator (allocator);
+  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+
+  /*MobilityHelper mobility;
   mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
                                  "MinX", DoubleValue (20.0),
                                  "MinY", DoubleValue (20.0),
@@ -128,47 +107,95 @@ Ptr<OpenGymDataContainer> MyGetObservation(void)
   mobility.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
                              "Bounds", RectangleValue (Rectangle (-500, 500, -500, 500)),
                              "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=2]"),
-                             "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.2]"));
-  mobility.Install (backbone);
-//se define una mobilidad 2 para casos de estudio
-  /*
-  MobilityHelper mobility;
-  Ptr<ListPositionAllocator> allocator = CreateObject<ListPositionAllocator> ();
-  allocator->Add (Vector (1000,0,0));
-  allocator->Add (Vector (0,0,0));
-  mobility.SetPositionAllocator (allocator);
-  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  mobility.Install (backbone);
-  */
+                             "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.2]"));*/
+
+  // Create the LoraPhyHelper  aqui asignamos la capa fisica
+  LoraPhyHelper phyHelper = LoraPhyHelper ();
+  phyHelper.SetChannel (channel);
+
+  // Create the LorawanMacHelper aqui asignamos la capa de mac 
+  LorawanMacHelper macHelper = LorawanMacHelper ();
+
+  // Create the LoraHelper
+  LoraHelper helper = LoraHelper ();
+
+  /************************
+  *  Create End Devices  *
+  ************************/
+
+  NS_LOG_INFO ("Creating the end device...");
+
+  // Create a set of nodes
+  NodeContainer endDevices;
+  endDevices.Create (20);
+
+  // Assign a mobility model to the node
+  mobility.Install (endDevices);
+
+  uint8_t nwkId = 54;
+  uint32_t nwkAddr = 1864;
+  Ptr<LoraDeviceAddressGenerator> addrGen = CreateObject<LoraDeviceAddressGenerator> (nwkId, nwkAddr);
+  macHelper.SetAddressGenerator (addrGen);
+
+  // Create the LoraNetDevices of the end devices    aqui usamos las definiciones de capa fisica y mas para
+  //que se identifiquen en el canal los equipos como dispositivos finales o endpoints
+  phyHelper.SetDeviceType (LoraPhyHelper::ED);
+  macHelper.SetDeviceType (LorawanMacHelper::ED_A);
+  helper.Install (phyHelper, macHelper, endDevices);
+
+  /*********************
+  *  Create Gateways  *
+  *********************/
+
+  NS_LOG_INFO ("Creating the gateway...");
+  NodeContainer gateways;
+  gateways.Create (1);
+
+  mobility.Install (gateways);
+
+  // Create a netdevice for each gateway
+  phyHelper.SetDeviceType (LoraPhyHelper::GW);
+  macHelper.SetDeviceType (LorawanMacHelper::GW);
+  helper.Install (phyHelper, macHelper, gateways);
+
+  /*********************************************
+  *  Install applications on the end devices  *
+  *********************************************/
+
+  OneShotSenderHelper oneShotSenderHelper;
+  oneShotSenderHelper.SetSendTime (Seconds (3));
+
+  oneShotSenderHelper.Install (endDevices);
+
+  /******************
+   * Set Data Rates *
+   ******************/
+  std::vector<int> sfQuantity (5);
+  sfQuantity = macHelper.SetSpreadingFactorsUp (endDevices, gateways, channel);
 
   NS_LOG_INFO ("Run Simulation.");
-
-  //Simulator::Stop (Seconds (stopTime));
-  //Simulator::Run ();
-  //Simulator::Destroy ();
-
   uint32_t nodeNum = 20;
   uint32_t low = 0.0;
   uint32_t high = 10.0;
   Ptr<UniformRandomVariable> rngInt = CreateObject<UniformRandomVariable> ();
 
+
+
   std::vector<uint32_t> shape = {nodeNum,};
   Ptr<OpenGymBoxContainer<uint32_t> > box = CreateObject<OpenGymBoxContainer<uint32_t> >(shape);
 
-  // genera datos aleatorios
+  // generate random data
   for (uint32_t i = 0; i<nodeNum; i++){
     uint32_t value = rngInt->GetInteger(low, high);
     box->AddValue(value);
   }
 
   NS_LOG_UNCOND ("MyGetObservation: " << box);
-  
   return box;
 }
 
 /*
-Definimos funcion de recompensa
-esta funcion suma 1 punto cada ves que hay avance por parte de la red segun el agente
+Define reward function
 */
 float MyGetReward(void)
 {
@@ -190,7 +217,7 @@ std::string MyGetExtraInfo(void)
 
 
 /*
-Ejecutamos acciones recibidas
+Execute received actions
 */
 bool MyExecuteActions(Ptr<OpenGymDataContainer> action)
 {
@@ -208,18 +235,18 @@ void ScheduleNextStateRead(double envStepTime, Ptr<OpenGymInterface> openGym)
 int
 main (int argc, char *argv[])
 {
-  // Parametros del escenario
+  // Parameters of the scenario
   uint32_t simSeed = 1;
-  double simulationTime = 1; //Segundos
-  double envStepTime = 0.1; //Segundos, ns3gym env del paso en el intertalo de segundos
+  double simulationTime = 1; //seconds
+  double envStepTime = 0.1; //seconds, ns3gym env step time interval
   uint32_t openGymPort = 9001;
   uint32_t testArg = 0;
 
   CommandLine cmd;
-  // Parametros requeridos para la interfaz de  OpenGym 
+  // required parameters for OpenGym interface
   cmd.AddValue ("openGymPort", "Port number for OpenGym env. Default: 9001", openGymPort);
   cmd.AddValue ("simSeed", "Seed for random generator. Default: 1", simSeed);
-  // parametros opcionales
+  // optional parameters
   cmd.AddValue ("simTime", "Simulation time in seconds. Default: 10s", simulationTime);
   cmd.AddValue ("testArg", "Extra simulation argument. Default: 0", testArg);
   cmd.Parse (argc, argv);
