@@ -37,23 +37,29 @@ de topologia (distribucion de la red), en caso de tener algun fallo, se recomien
 Una vez cuente con los requerimientos completamente podra ejecutar los escenarios de la siguiente manera, para cada escenario debe copiar la carpeta del escenario que desea ejecutar en la carpeta scratch que encontraradentro de ns3, luego de ello podra ejecutar el comando de ejecucion dependiendo del escenario como se especifica adelante:
 
  # Escenario 1 NS3
-```sudo ./waf --run redNs3 ,```  este comando debe hacerce un nivel arriba de la carpeta scratch.
+```sudo ./waf --run redNs3```  
+Este comando debe hacerce un nivel arriba de la carpeta scratch.
 
  # Escenario 2 red LoRaWan
 
-sudo ./waf --run redLorawan , este comando debe hacerce un nivel arriba de la carpeta scratch.
+```sudo ./waf --run redLorawan```
+Este comando debe hacerce un nivel arriba de la carpeta scratch.
 
 # Escenario 3 red con openAi Gym
 
 Para este escenario deberá tener dos terminales:
 
-La primera terminal deberá ejecutar el comando sudo ./waf --run redOpenGym , este comando debe hacerce un nivel arriba de la carpeta scratch, cuando aparezca el mensaje de ejecutar el agente use la segunda terminal.
+La primera terminal deberá ejecutar el comando sudo
+```./waf --run redOpenGym```
+Este comando debe hacerce un nivel arriba de la carpeta scratch, cuando aparezca el mensaje de ejecutar el agente use la segunda terminal.
 
 La segunda terminal debe navegar hasta el archivo .py de la carpeta de redOpenGym,
 Los comandos de navegación son:
-    * cd scratch
-    * cd redOpenGym
-Una vez dentro de la carpeta redOpenGym podra ejecutar el comando:  python3 agentes.py
+    ```cd scratch```
+    ```cd redOpenGym```
+Una vez dentro de la carpeta redOpenGym podra ejecutar el comando: 
+
+```python3 agentes.py```
 
 # Documentación anexa
 
