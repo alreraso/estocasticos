@@ -59,8 +59,11 @@ Este comando debe hacerce un nivel arriba de la carpeta scratch, cuando aparezca
 
 La segunda terminal debe navegar hasta el archivo .py de la carpeta de redOpenGym,
 Los comandos de navegación son:
-    *```cd scratch```
-    *```cd redOpenGym```
+
+    ```cd scratch```
+    
+    
+    ```cd redOpenGym```
     
     
 Una vez dentro de la carpeta redOpenGym podra ejecutar el comando: 
